@@ -42,6 +42,8 @@ var tasks = map[string]Task{
 
 var processingError = "Ошибка обработки запроса, попробуйте попытку позднее"
 var invalidIDError = "Неверный идентификатор задачи"
+var internalError = "Внутренняя ошибка сервера"
+var alreadyExist = "Задача с таким ID уже существует"
 
 func getTasks(w http.ResponseWriter, r *http.Request) {
 
@@ -53,7 +55,11 @@ func getTasks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+	_, err = w.Write(resp)
+
+	if err != nil {
+		fmt.Println("Ошибка записи данных getTasks (61 строка)")
+	}
 }
 
 func getTask(w http.ResponseWriter, r *http.Request) {
@@ -69,13 +75,18 @@ func getTask(w http.ResponseWriter, r *http.Request) {
 	response, err := json.Marshal(task)
 
 	if err != nil {
-		http.Error(w, processingError, http.StatusBadRequest)
+		http.Error(w, internalError, http.StatusBadRequest)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+
+	_, err = w.Write(response)
+
+	if err != nil {
+		fmt.Println("Ошибка записи данных getTask (88 строка)")
+	}
 }
 
 func postTasks(w http.ResponseWriter, r *http.Request) {
@@ -91,6 +102,13 @@ func postTasks(w http.ResponseWriter, r *http.Request) {
 
 	if err = json.Unmarshal(buffer.Bytes(), &task); err != nil {
 		http.Error(w, processingError, http.StatusBadRequest)
+		return
+	}
+
+	_, ok := tasks[task.ID]
+
+	if ok {
+		http.Error(w, alreadyExist, http.StatusBadRequest)
 		return
 	}
 
